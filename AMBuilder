@@ -1,0 +1,87 @@
+# vim: set sts=2 ts=8 sw=2 tw=99 et ft=python: 
+import os
+
+# Here only one sdk should be available to generate only one executable in the end,
+# as multi-sdk loading isn't supported out of the box by metamod, and would require specifying the full path in the vdf
+# which in the end would ruin the multi-platform (unix, win etc) loading by metamod as it won't be able to append platform specific extension
+# so just fall back to the single binary.
+# Multi-sdk solutions should be manually loaded with a custom plugin loader (examples being sourcemod, stripper:source)
+for sdk_name in MMSPlugin.sdks:
+  for cxx in MMSPlugin.all_targets:
+    sdk = MMSPlugin.sdks[sdk_name]
+
+    if not cxx.target.arch in sdk.platformSpec[cxx.target.platform]:
+      continue
+
+    binary = MMSPlugin.HL2Library(builder, cxx, MMSPlugin.plugin_name, sdk)
+
+    # Protobuf
+    binary.compiler.cxxincludes += [
+      os.path.join(MMSPlugin.protobuf_root, 'include'),
+      os.path.join(MMSPlugin.protobuf_valve_root),
+    ]
+    binary.compiler.postlink += [
+      '-L' + os.path.join(MMSPlugin.protobuf_root, 'lib'),
+      '-lprotobuf'
+    ]
+    # files = os.listdir(f"{MMSPlugin.protobuf_valve_root}/cs2")
+    # for file_name in files:
+    #     # Check if the item is a file (not a directory)
+    #     if os.path.isfile(os.path.join(MMSPlugin.protobuf_valve_root, "cs2", file_name)) and file_name.endswith(".cc"):
+    #         binary.sources.append(os.path.join(os.path.join(MMSPlugin.protobuf_valve_root, "cs2", file_name)))
+
+    binary.sources += [
+      os.path.join(MMSPlugin.protobuf_valve_root, 'cs2', 'netmessages.pb.cc'),
+      os.path.join(MMSPlugin.protobuf_valve_root, 'cs2', 'networkbasetypes.pb.cc'),
+      os.path.join(MMSPlugin.protobuf_valve_root, 'cs2', 'network_connection.pb.cc'),
+      os.path.join(MMSPlugin.protobuf_valve_root, 'cs2', 'networksystem_protomessages.pb.cc'),
+    ]
+
+    # DynoHook
+    binary.compiler.cxxincludes += [
+      os.path.join(MMSPlugin.dynohook_root, 'src'),
+    ]
+    binary.compiler.postlink += [
+      '-L' + os.path.join(MMSPlugin.dynohook_root),
+      '-ldynohook'
+    ]
+    binary.compiler.postlink += [
+      '-L' + os.path.join(MMSPlugin.dynohook_root, 'src', 'external', 'asmjit'),
+      '-lasmjit'
+    ]
+    binary.compiler.postlink += [
+      '-L' + os.path.join(MMSPlugin.dynohook_root, 'src', 'external', 'zydis'),
+      '-lZydis',
+    ]
+
+    # Celt
+    binary.compiler.cxxincludes += [
+      os.path.join(MMSPlugin.celt_root, 'include')
+    ]
+    binary.compiler.linkflags += [
+      os.path.join(MMSPlugin.celt_root, 'lib', 'libcelt0.a')
+    ]
+
+    # Extension
+    binary.sources += [
+      'extension.cpp',
+      os.path.join('voice', 'voice.cpp'),
+      os.path.join('voice', 'ringbuffer.cpp'),
+      os.path.join('gameconfig', 'gameconfig.cpp'),
+      os.path.join('utils', 'utils.cpp'),
+      os.path.join('detour', 'functions.cpp'),
+      os.path.join('commands', 'commands.cpp'),
+    ]
+
+    if sdk_name in ['dota', 'cs2']:
+      binary.sources += [
+      os.path.join(sdk.path, 'tier1', 'convar.cpp'),
+      os.path.join(sdk.path, 'public', 'tier0', 'memoverride.cpp'),
+    ]
+
+    if cxx.target.arch == 'x86':
+      binary.sources += ['sourcehook/sourcehook_hookmangen.cpp']
+    nodes = builder.Add(binary)
+    MMSPlugin.binaries += [nodes]
+    
+  break
