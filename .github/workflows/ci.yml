@@ -123,7 +123,7 @@ jobs:
           # C++14 compat
           sed -i 's/std::string_view name/std::string name/g' src/dynohook/registers.h
 
-          cmake . -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          cmake . -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=14
           make -j 8
 
       - name: Install AMBuild
@@ -135,7 +135,7 @@ jobs:
         shell: bash
         working-directory: protobuf
         run: |
-          cmake . -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_SHARED_LIBS=OFF -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX="$PWD"
+          cmake . -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX="$PWD"
           make -j 8
           make install
 
